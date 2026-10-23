@@ -17,6 +17,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -27,6 +28,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("automorph.api")
 
 app = FastAPI(title="AutoMorph Management API", version="2.1.0")
+
+# Enable gzip compression for responses >= 1000 bytes (e.g. 3.6MB catalog -> ~250KB)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Allow CORS for development or external ingress
 app.add_middleware(
@@ -610,7 +614,7 @@ async def download_server_options(package: str, req: DownloadOptionsRequest | No
     try:
         repos = req.repos if req else []
         force = req.force if req else False
-        res = options_manager.ensure_app_options(package, repos=repos, force=force)
+        res = await asyncio.to_thread(options_manager.ensure_app_options, package, repos=repos, force=force)
         return res
     except Exception as e:
         logger.error(f"Error ensuring options on server for {package}: {e}", exc_info=True)

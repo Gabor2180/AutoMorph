@@ -2967,33 +2967,13 @@ const MORPHE_DEFAULT_APPS = {
 };
 
 let morpheCatalogData = null;
-try {
-  sessionStorage.removeItem('morphe_catalog_data_v5');
-  sessionStorage.removeItem('morphe_catalog_data_v6');
-  const cachedCatalog = sessionStorage.getItem('morphe_catalog_data_v7');
-  if (cachedCatalog) morpheCatalogData = JSON.parse(cachedCatalog);
-} catch (_) {}
-
 let isFetchingMorpheCatalog = false;
 
 async function fetchMorpheCatalog(force = false) {
   if (force) {
     morpheCatalogData = null;
-    try {
-      sessionStorage.removeItem('morphe_catalog_data_v7');
-    } catch (_) {}
   }
   if (morpheCatalogData) return morpheCatalogData;
-
-  if (!force) {
-    try {
-      const cached = sessionStorage.getItem('morphe_catalog_data_v7');
-      if (cached) {
-        morpheCatalogData = JSON.parse(cached);
-        return morpheCatalogData;
-      }
-    } catch (_) {}
-  }
 
   if (isFetchingMorpheCatalog) {
     while (isFetchingMorpheCatalog) {
@@ -3032,6 +3012,8 @@ async function fetchMorpheCatalog(force = false) {
         supported_repos: [],
         repo_details: [],
         patches_by_repo: {},
+        _seenRepos: new Set(),
+        _seenPatchesByRepo: {},
       };
     }
 
@@ -3048,6 +3030,8 @@ async function fetchMorpheCatalog(force = false) {
           supported_repos: [],
           repo_details: [],
           patches_by_repo: {},
+          _seenRepos: new Set(),
+          _seenPatchesByRepo: {},
         };
       } else {
         if (sInfo.name && sInfo.name !== pkg) catalog[pkg].name = sInfo.name;
@@ -3080,23 +3064,27 @@ async function fetchMorpheCatalog(force = false) {
           supported_repos: [],
           repo_details: [],
           patches_by_repo: {},
+          _seenRepos: new Set(),
+          _seenPatchesByRepo: {},
         };
       }
       if (!catalog[appPkg].patches_by_repo) catalog[appPkg].patches_by_repo = {};
+      if (!catalog[appPkg]._seenPatchesByRepo) catalog[appPkg]._seenPatchesByRepo = {};
+      if (!catalog[appPkg]._seenRepos) catalog[appPkg]._seenRepos = new Set(catalog[appPkg].supported_repos || []);
       return catalog[appPkg];
     }
 
     function linkRepoToApp(appPkg, rUrl, bName, src, patchCnt, isOfficial = false) {
       const app = ensureCatalogApp(appPkg);
       if (!app) return;
-      const existingIdx = app.supported_repos.indexOf(rUrl);
       const detail = {
         repo_url: rUrl,
         name: bName,
         source: src,
         patch_count: patchCnt,
       };
-      if (existingIdx === -1) {
+      if (!app._seenRepos.has(rUrl)) {
+        app._seenRepos.add(rUrl);
         if (isOfficial || rUrl === MORPHE_OFFICIAL_REPO_URL) {
           app.supported_repos.unshift(rUrl);
           app.repo_details.unshift(detail);
@@ -3105,6 +3093,7 @@ async function fetchMorpheCatalog(force = false) {
           app.repo_details.push(detail);
         }
       } else if (isOfficial || rUrl === MORPHE_OFFICIAL_REPO_URL) {
+        const existingIdx = app.supported_repos.indexOf(rUrl);
         if (existingIdx > 0) {
           app.supported_repos.splice(existingIdx, 1);
           app.supported_repos.unshift(rUrl);
@@ -3117,20 +3106,24 @@ async function fetchMorpheCatalog(force = false) {
     function attachPatchToApp(appPkg, rUrl, patchObj, isUniversal = false) {
       const app = ensureCatalogApp(appPkg);
       if (!app) return;
-      if (!app.patches_by_repo[rUrl]) app.patches_by_repo[rUrl] = [];
+      if (!app.patches_by_repo[rUrl]) {
+        app.patches_by_repo[rUrl] = [];
+        app._seenPatchesByRepo[rUrl] = new Set();
+      }
+      if (app._seenPatchesByRepo[rUrl].has(patchObj.name)) return;
+      app._seenPatchesByRepo[rUrl].add(patchObj.name);
+
       const isUniv = Boolean(isUniversal || patchObj.isUniversal === true || patchObj.scope === 'universal' || determinePatchScope(patchObj.name, patchObj) === 'universal');
       const isDefault = isUniv ? false : Boolean(patchObj.default === true || patchObj.use === true);
-      if (!app.patches_by_repo[rUrl].some(p => p.name === patchObj.name)) {
-        app.patches_by_repo[rUrl].push({
-          name: patchObj.name,
-          description: patchObj.description || '',
-          default: isDefault,
-          use: isDefault,
-          isUniversal: isUniv,
-          scope: isUniv ? 'universal' : 'app',
-          options: patchObj.options || null
-        });
-      }
+      app.patches_by_repo[rUrl].push({
+        name: patchObj.name,
+        description: patchObj.description || '',
+        default: isDefault,
+        use: isDefault,
+        isUniversal: isUniv,
+        scope: isUniv ? 'universal' : 'app',
+        options: patchObj.options || null
+      });
     }
 
     // 3. Link bundles and patches from catalog (community + official bundles)
@@ -3188,9 +3181,6 @@ async function fetchMorpheCatalog(force = false) {
     }
 
     morpheCatalogData = catalog;
-    try {
-      sessionStorage.setItem('morphe_catalog_data_v7', JSON.stringify(catalog));
-    } catch (_) {}
     return catalog;
   } catch (err) {
     console.warn('Direct Morphe catalog load failed:', err);
@@ -3774,6 +3764,15 @@ const KNOWN_UNIVERSAL_PATCH_NAMES = new Set([
   'clone app',
   'clone',
   'change package name',
+  'change installer source',
+  'spoof installer source',
+  'installer source',
+  'installer source check',
+  'disable play store updates',
+  'disable play store update',
+  'disable play updates',
+  'disable play update',
+  'disable play update check',
   'hide app icon',
   'remove app icon',
   'change app icon',
@@ -3783,6 +3782,7 @@ const KNOWN_UNIVERSAL_PATCH_NAMES = new Set([
   'enable debug mode',
   'enable android debugging',
   'enable webview debugging',
+  'enable debugging',
   'make app debuggable',
   'spoof signature',
   'spoof app signature',
@@ -3817,6 +3817,20 @@ const KNOWN_UNIVERSAL_PATCH_NAMES = new Set([
   'bypass adb/developer options detection',
   'bypass emulator detection',
   'bypass forced updates',
+  'bypass forced update',
+  'block forced updates',
+  'block update prompts',
+  'block update prompt',
+  'disable auto update',
+  'disable auto updates',
+  'disable auto-update',
+  'disable auto-updates',
+  'disable update check',
+  'disable update checks',
+  'disable update prompts',
+  'disable update prompt',
+  'hide update prompt',
+  'stop remote updates',
   'bypass vpn detection',
   'bypass license verification',
   'bypass okhttp pinning',
@@ -3875,6 +3889,11 @@ function determinePatchScope(patchName, patchObj) {
     norm.startsWith('clone') ||
     norm.startsWith('change package name') ||
     norm.startsWith('spoof ') ||
+    norm.includes('installer source') ||
+    norm.includes('install source') ||
+    norm.includes('installer check') ||
+    norm.includes('play store update') ||
+    norm.includes('play update') ||
     norm.includes('pairip') ||
     norm.includes('microg') ||
     norm.includes('gmscore') ||
@@ -3882,6 +3901,7 @@ function determinePatchScope(patchName, patchObj) {
     norm.includes('license verification') ||
     norm.includes('root check') ||
     norm.includes('debuggable') ||
+    norm.includes('debugging') ||
     norm.includes('user certificate') ||
     norm.includes('certificate pinning') ||
     norm.includes('revenuecat')
@@ -4524,10 +4544,12 @@ async function loadWizardPatches() {
     fetchMorpheCatalog()
   ]);
 
-  // Ensure options files are generated via Morphe options-create workflow for any missing repos
+  // Only trigger backend CLI/download options-fetch if a repo is missing BOTH options file AND catalog patch definitions
   const missingRepos = activeRepos.filter(repoUrl => {
     const owner = extractRepoOwner(repoUrl);
-    return !existingOptions.files || !existingOptions.files[owner];
+    const hasOptions = Boolean(existingOptions.files && existingOptions.files[owner]);
+    const hasCatalogPatches = Boolean(catalog?.[pkg]?.patches_by_repo?.[repoUrl]?.length > 0);
+    return !hasOptions && !hasCatalogPatches;
   });
 
   if (missingRepos.length > 0) {
@@ -5081,10 +5103,12 @@ async function loadEditAppPatches() {
     fetchMorpheCatalog()
   ]);
 
-  // Ensure options files are generated via Morphe options-create workflow for any missing repos
+  // Only trigger backend CLI/download options-fetch if a repo is missing BOTH options file AND catalog patch definitions
   const missingRepos = activeRepos.filter(repoUrl => {
     const owner = extractRepoOwner(repoUrl);
-    return !existingOptions.files || !existingOptions.files[owner];
+    const hasOptions = Boolean(existingOptions.files && existingOptions.files[owner]);
+    const hasCatalogPatches = Boolean(catalog?.[pkg]?.patches_by_repo?.[repoUrl]?.length > 0);
+    return !hasOptions && !hasCatalogPatches;
   });
 
   if (missingRepos.length > 0) {
