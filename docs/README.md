@@ -16,7 +16,7 @@ Choose a guide below to get started:
 
 ### 🚇 [2. Remote Access & Tunnels Guide](tunnels.md)
 * Set up a tunnel **before** configuring AutoMorph so you have your access URL and tokens ready:
-  * **🔴 Pangolin**: Quickest setup, free public URL, zero custom domain required.
+  * **🔴 Pangolin**: Quickest setup, free public URL (or custom domain), zero domain cost required.
   * **🔵 Tailscale Funnel**: Zero-cost public HTTPS endpoint or private mesh access.
   * **🟠 Cloudflare Tunnels**: Best choice if you own a custom domain.
 * Clear explanation of tunnel tokens, compose profiles, and how links are generated in email reports.
@@ -24,10 +24,12 @@ Choose a guide below to get started:
 ### 📖 [3. User Guide & Web Interface](user-guide.md)
 * Comprehensive tour of the web portal:
   * Adding and configuring packages.
-  * Customizing patch options and repositories.
-  * Triggering builds and configuring automated daily schedules.
+  * Customizing patch options, repositories, and **patch aliases**.
+  * Triggering builds, daily schedules, and understanding **patching strategies (Strategy 1 vs. 2)**.
+  * Using a **custom keystore** for seamless in-place updates with the Morphe mobile app.
   * Enabling **Low-Spec Mode** for 1GB RAM instances.
   * Setting up automated email build notifications and downloading APKs.
+
 
 ---
 
