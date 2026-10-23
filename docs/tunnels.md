@@ -11,11 +11,11 @@ AutoMorph comes with built-in, first-class support for three tunnel providers. Y
 | Feature | 🔴 Pangolin | 🔵 Tailscale Funnel | 🟠 Cloudflare Tunnel |
 | :--- | :--- | :--- | :--- |
 | **Cost** | 100% Free | 100% Free (Tailscale Free tier + zero-cost Funnel) | 100% Free (requires your own domain) |
-| **Custom Domain Required?** | ❌ No | ❌ No (`*.ts.net` provided) | ✅ Yes |
+| **Custom Domain Required?** | ❌ Optional (Free URL provided, or use custom domain) | ❌ No (`*.ts.net` provided) | ✅ Yes |
 | **Access Type** | Public URL | Public (Funnel) or Private Mesh | Public URL |
 | **SSL / HTTPS** | Automatic | Automatic | Automatic |
 | **Requires Host Agent?** | ❌ In Docker Compose | ✅ Host CLI / Tailscale daemon | ❌ In Docker Compose |
-| **Best For** | Quickest setup, zero domain cost | Tailscale network users, zero cost | Users with their own domain |
+| **Best For** | Quickest setup, free URL or custom domain | Tailscale network users, zero cost | Users with their own domain |
 
 ---
 
@@ -39,7 +39,7 @@ AutoMorph comes with built-in, first-class support for three tunnel providers. Y
 
 ## Option 1: Pangolin Setup (Easiest / Free URL)
 
-Pangolin provides quick reverse-proxy tunnels using Newt clients. You don't need a domain or open ports.
+Pangolin provides quick reverse-proxy tunnels using Newt clients. You don't need to purchase a domain or open firewall ports, though custom domains are fully supported if you have one.
 
 ### 1.1 Create Account & Target
 1. Register for an account at [Pangolin](https://pangolin.net/) (or your self-hosted Pangolin instance).
@@ -49,7 +49,10 @@ Pangolin provides quick reverse-proxy tunnels using Newt clients. You don't need
    * **Protocol**: `HTTP`
 3. Generate or view your **Newt Client credentials**:
    * Note your **Endpoint**, **Newt ID**, and **Newt Secret**.
-   * Note the allocated public domain/URL (e.g. `https://my-patcher.example-pangolin.com`).
+   * Note the allocated public domain/URL (e.g. `https://my-patcher.example-pangolin.com`, or your configured custom domain).
+
+> [!TIP]
+> Pangolin provides a free sub-domain out of the box, but you can also configure your own custom domain directly within your Pangolin dashboard if you prefer branded URLs.
 
 ### 1.2 Configure `.env`
 In your `automorph` folder, open `.env`:
