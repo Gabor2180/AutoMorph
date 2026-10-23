@@ -270,11 +270,23 @@ function setupEventListeners() {
   });
 
   document.getElementById('btn-wiz-refresh-catalog')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-wiz-refresh-catalog');
+    const icon = btn?.querySelector('.material-symbols-rounded');
+    if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+    if (btn) btn.disabled = true;
     showToast('Refreshing live catalog from Morphe...', 'info');
-    await fetchMorpheCatalog(true);
-    const query = document.getElementById('wiz-search-input')?.value.trim() || '';
-    searchCatalog(query);
-    showToast('Live catalog refreshed', 'success');
+    try {
+      await fetchMorpheCatalog(true);
+      const query = document.getElementById('wiz-search-input')?.value.trim() || '';
+      searchCatalog(query);
+      showToast('Live catalog refreshed', 'success');
+    } catch (err) {
+      console.error('Failed to refresh catalog:', err);
+      showToast('Failed to refresh catalog from Morphe', 'error');
+    } finally {
+      if (icon) icon.style.animation = '';
+      if (btn) btn.disabled = false;
+    }
   });
 
   document.getElementById('btn-wiz-toggle-custom')?.addEventListener('click', () => {
@@ -300,6 +312,29 @@ function setupEventListeners() {
       input.value = '';
     } else {
       showToast('Please enter a valid Git repository URL.', 'warning');
+    }
+  });
+
+  // Wizard Step 2: Refresh Repos from Catalog
+  document.getElementById('btn-wiz-repos-refresh')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-wiz-repos-refresh');
+    const icon = btn?.querySelector('.material-symbols-rounded');
+    if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+    if (btn) btn.disabled = true;
+    showToast('Refreshing live catalog from Morphe...', 'info');
+    try {
+      await fetchMorpheCatalog(true);
+      const pkg = state.wizard.selectedPackage;
+      if (pkg) {
+        await loadSuggestedReposForPackage(pkg);
+      }
+      showToast('Repositories refreshed from live Morphe catalog', 'success');
+    } catch (err) {
+      console.error('Failed to refresh catalog:', err);
+      showToast('Failed to refresh catalog from Morphe', 'error');
+    } finally {
+      if (icon) icon.style.animation = '';
+      if (btn) btn.disabled = false;
     }
   });
 
@@ -373,6 +408,29 @@ function setupEventListeners() {
       input.value = '';
     } else {
       showToast('Please enter a valid Git repository URL.', 'warning');
+    }
+  });
+
+  // Edit App Modal Tab 1: Refresh Repos from Catalog
+  document.getElementById('btn-edit-refresh-catalog')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-edit-refresh-catalog');
+    const icon = btn?.querySelector('.material-symbols-rounded');
+    if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+    if (btn) btn.disabled = true;
+    showToast('Refreshing live catalog from Morphe...', 'info');
+    try {
+      await fetchMorpheCatalog(true);
+      renderEditReposTab();
+      if (state.editApp) {
+        state.editApp.repoPatches = {};
+      }
+      showToast('Repositories refreshed from live Morphe catalog', 'success');
+    } catch (err) {
+      console.error('Failed to refresh catalog:', err);
+      showToast('Failed to refresh catalog from Morphe', 'error');
+    } finally {
+      if (icon) icon.style.animation = '';
+      if (btn) btn.disabled = false;
     }
   });
 

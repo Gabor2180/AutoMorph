@@ -448,7 +448,7 @@ async def get_catalog(refresh: bool = False) -> Response:
         import apkpure_fetcher
 
         data = apkpure_fetcher.get_morphe_catalog(force_refresh=refresh)
-        return JSONResponse(data)
+        return JSONResponse(data, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     except Exception as e:
         logger.error(f"Error fetching catalog: {e}", exc_info=True)
         try:
@@ -457,7 +457,7 @@ async def get_catalog(refresh: bool = False) -> Response:
             if catalog_file.is_file():
                 with open(catalog_file, "r", encoding="utf-8") as f:
                     raw = json.load(f)
-                    return JSONResponse(apkpure_fetcher.enrich_morphe_catalog(raw))
+                    return JSONResponse(apkpure_fetcher.enrich_morphe_catalog(raw), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
         except Exception:
             pass
         raise HTTPException(status_code=500, detail=str(e))

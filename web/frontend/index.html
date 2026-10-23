@@ -793,7 +793,8 @@
             <input type="text" id="wiz-search-input" class="search-input" placeholder="Search apps (e.g. Reddit, Bandcamp, Twitter)...">
           </div>
           <button id="btn-wiz-refresh-catalog" class="btn btn-secondary btn-sm" type="button" title="Refresh Morphe catalog">
-            <span class="material-symbols-rounded">sync</span>
+            <span class="material-symbols-rounded" style="font-size: 16px;">sync</span>
+            <span>Refresh</span>
           </button>
           <button id="btn-wiz-toggle-custom" class="btn btn-secondary btn-sm" type="button">
             <span class="material-symbols-rounded">edit</span>
@@ -816,13 +817,17 @@
 
       <!-- Step 2: Suggested Repos -->
       <div id="wiz-step-2" class="wizard-content hidden">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; flex-wrap: wrap;">
           <div>
             <h3 style="font-size: 1.125rem; font-family: var(--font-display);">Patch Repositories</h3>
             <p style="font-size: 0.875rem; color: var(--text-muted);">
               Targeting: <strong id="wiz-selected-pkg-label" style="color: var(--primary-cyan);">package.id</strong>
             </p>
           </div>
+          <button id="btn-wiz-repos-refresh" class="btn btn-secondary btn-sm" type="button" title="Refresh repositories from Morphe catalog">
+            <span class="material-symbols-rounded" style="font-size: 16px;">sync</span>
+            <span>Refresh Repos</span>
+          </button>
         </div>
 
         <div class="repo-selection-toolbar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 10px 14px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 14px;">
@@ -1040,9 +1045,15 @@
         
         <!-- Tab Content 1: Repositories -->
         <div id="edit-tab-content-repos">
-          <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 14px;">
-            Choose upstream repositories to source patches from for this application.
-          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; flex-wrap: wrap;">
+            <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">
+              Choose upstream repositories to source patches from for this application.
+            </p>
+            <button id="btn-edit-refresh-catalog" class="btn btn-secondary btn-sm" type="button" title="Refresh repositories from Morphe catalog">
+              <span class="material-symbols-rounded" style="font-size: 16px;">sync</span>
+              <span>Refresh Repos</span>
+            </button>
+          </div>
 
           <!-- Master Selection Bar for Repositories -->
           <div class="repo-selection-toolbar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 10px 14px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 14px;">
