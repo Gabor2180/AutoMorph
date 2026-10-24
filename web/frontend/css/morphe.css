@@ -2898,13 +2898,30 @@ body {
 /* ==========================================================================
    Obtainium Integration Modal & QR Code
    ========================================================================== */
-#obtainium-qr-container img,
-#obtainium-qr-container canvas {
+#obtainium-qr-container {
+  width: 200px !important;
+  height: 200px !important;
+  position: relative;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+#obtainium-qr-container canvas,
+#obtainium-qr-container img {
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
   image-rendering: pixelated;
-  display: block !important;
+  width: 200px !important;
+  height: 200px !important;
+  max-width: 200px !important;
+  max-height: 200px !important;
+  display: block;
   margin: 0 auto;
+}
+
+#obtainium-qr-container canvas[style*="none"],
+#obtainium-qr-container img[style*="none"] {
+  display: none !important;
 }
 
 .obtainium-chip {
@@ -2919,5 +2936,6 @@ body {
   font-size: 0.6875rem;
   font-weight: 500;
 }
+
 
 

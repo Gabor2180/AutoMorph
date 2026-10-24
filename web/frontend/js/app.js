@@ -5998,6 +5998,20 @@ async function openObtainiumModal(specificPackage = null) {
           colorLight: '#ffffff',
           correctLevel: QRCode.CorrectLevel.M
         });
+        // QRCode creates both a canvas and an img; ensure only the active one displays
+        setTimeout(() => {
+          const img = qrContainer.querySelector('img');
+          const canvas = qrContainer.querySelector('canvas');
+          if (img && canvas) {
+            if (img.src && img.src.startsWith('data:image/png')) {
+              canvas.style.display = 'none';
+              img.style.display = 'block';
+            } else {
+              img.style.display = 'none';
+              canvas.style.display = 'block';
+            }
+          }
+        }, 50);
       } else {
         qrContainer.innerHTML = `<a href="${qrUrl}" target="_blank" style="font-size: 0.8rem; color: #000; text-align: center; word-break: break-all;">Open Sync Link</a>`;
       }
