@@ -2924,6 +2924,18 @@ body {
   display: none !important;
 }
 
+.obtainium-svg-icon {
+  vertical-align: middle;
+  fill: var(--primary-cyan);
+  display: inline-block;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.btn:hover .obtainium-svg-icon {
+  filter: drop-shadow(0 0 6px rgba(32, 207, 206, 0.45));
+}
+
 .obtainium-chip {
   display: inline-flex;
   align-items: center;
@@ -2936,6 +2948,7 @@ body {
   font-size: 0.6875rem;
   font-weight: 500;
 }
+
 
 
 
