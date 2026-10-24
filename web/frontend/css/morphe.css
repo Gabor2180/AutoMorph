@@ -242,6 +242,11 @@ body::after {
   gap: 12px;
 }
 
+.nav-actions .btn {
+  height: 38px;
+  box-sizing: border-box;
+}
+
 /* ==========================================================================
    Buttons & Badges
    ========================================================================== */
@@ -298,6 +303,8 @@ body::after {
 .btn-sm {
   padding: 6px 12px;
   font-size: 0.8125rem;
+  min-height: 38px;
+  box-sizing: border-box;
 }
 
 .btn-icon-only {
@@ -371,6 +378,11 @@ body::after {
   margin-bottom: 24px;
   flex-wrap: wrap;
   gap: 16px;
+}
+
+.hero-header .btn {
+  height: 38px;
+  box-sizing: border-box;
 }
 
 .hero-title-area h1 {
