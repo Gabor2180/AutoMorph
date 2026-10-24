@@ -2155,6 +2155,7 @@ body {
   .nav-actions .btn .obtainium-svg-icon {
     width: 20px !important;
     height: 20px !important;
+    display: block !important;
   }
 
   #status-badge #status-badge-text {
@@ -2942,13 +2943,13 @@ body {
 .btn .obtainium-svg-icon {
   width: 20px;
   height: 20px;
-  vertical-align: middle;
+  display: block;
 }
 
 .btn-sm .obtainium-svg-icon {
-  width: 19px;
-  height: 19px;
-  vertical-align: middle;
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 .card-actions-group .btn .obtainium-svg-icon {
