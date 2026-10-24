@@ -34,6 +34,9 @@
   --color-warning: #f59e0b;
   --color-danger: #f43f5e;
   --color-info: #38bdf8;
+  
+  /* Obtainium Icon Size (edit here or via browser devtools) */
+  --obtainium-icon-size: 17px;
 
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
@@ -2139,12 +2142,20 @@ body {
   }
   
   .nav-actions {
-    gap: 4px !important;
+    gap: 6px !important;
     flex-shrink: 0 !important;
   }
 
   .nav-actions .btn {
-    padding: 6px 8px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
   }
   
   /* Collapse button text in navbar, showing only icons */
@@ -2153,8 +2164,8 @@ body {
   }
 
   .nav-actions .btn .obtainium-svg-icon {
-    width: 20px !important;
-    height: 20px !important;
+    width: var(--obtainium-icon-size, 17px) !important;
+    height: var(--obtainium-icon-size, 17px) !important;
     display: block !important;
   }
 
@@ -2931,37 +2942,31 @@ body {
 }
 
 .obtainium-svg-icon {
-  width: 20px;
-  height: 20px;
-  vertical-align: middle;
+  width: var(--obtainium-icon-size, 17px);
+  height: var(--obtainium-icon-size, 17px);
+  display: block;
   fill: var(--primary-cyan);
-  display: inline-block;
   flex-shrink: 0;
   transition: transform 0.15s ease, filter 0.15s ease;
 }
 
-.btn .obtainium-svg-icon {
-  width: 20px;
-  height: 20px;
-  display: block;
-}
-
+.btn .obtainium-svg-icon,
 .btn-sm .obtainium-svg-icon {
-  width: 20px;
-  height: 20px;
+  width: var(--obtainium-icon-size, 17px);
+  height: var(--obtainium-icon-size, 17px);
   display: block;
 }
 
 .card-actions-group .btn .obtainium-svg-icon {
-  width: 17px;
-  height: 17px;
-  vertical-align: middle;
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .modal-title .obtainium-svg-icon {
-  width: 26px;
-  height: 26px;
-  vertical-align: middle;
+  width: 24px;
+  height: 24px;
+  display: block;
 }
 
 .btn:hover .obtainium-svg-icon {
