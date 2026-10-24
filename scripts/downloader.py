@@ -325,7 +325,7 @@ class Downloader:
 #            CHECKS             #
 #################################
 
-    def check_exists(self, outer_dir: Path, arch: str, version_name: str, package_name: str, split_dir: Path) -> bool:
+    def check_exists(self, outer_dir: Path, arch: str, version_name: str, package_name: str, split_dir: Path) -> tuple[bool, str]:
         xapks = list(outer_dir.glob("*.xapk"))
 
         if split_dir.exists() and not xapks:
@@ -352,9 +352,9 @@ class Downloader:
                     return True, apk_reason
                 logger.warning(f" └── [!] APK check failed: {apk_reason}")
         
-        return False
+        return False, None
         
-    def check_xapk(self, xapk: Path, arch: str, version_name: str, package_name: str) -> tuple[bool, str | None]:
+    def check_xapk(self, xapk: Path, arch: str, version_name: str, package_name: str) -> tuple[bool, str]:
         is_apk, reason = self.is_apk(xapk)
 
         if is_apk:
@@ -363,9 +363,9 @@ class Downloader:
         arch_result, reason = self.check_xapk_arch(xapk, arch)
         
         if arch_result:
-            version_result, version_code = self.check_xapk_version(xapk, version_name, package_name)
+            version_result, reason = self.check_xapk_version(xapk, version_name, package_name)
             if version_result:
-                return True, version_code
+                return True, reason
 
         return False, reason 
 
