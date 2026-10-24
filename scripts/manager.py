@@ -109,6 +109,7 @@ class Obtanium:
             sorted_versions = sorted(details.keys(), key=lambda v: details[v].get('version_code', 0), reverse=True)
             latest_version = sorted_versions[0]
             latest_details = details[latest_version]
+            additional_settings = {'appIdOrName': package_name, 'versionExtractionRegEx': r'\d+(\.\d+)+', 'pickHighestVersionCode': True}
             apk_list = [[latest_details['file_name'], latest_details['url']]]
 
             app = {
@@ -119,7 +120,7 @@ class Obtanium:
                 'latestVersion': latest_version,
                 'preferredApkIndex': 0,
                 'overrideSource': 'FDroidRepo',
-                'additionalSettings': f"{'appIdOrName': package_name, 'versionExtractionRegEx': r'\d+(\.\d+)+', 'pickHighestVersionCode': True}",
+                'additionalSettings': json.dumps(additional_settings),
                 'apkUrls': json.dumps(apk_list)
             }
 
