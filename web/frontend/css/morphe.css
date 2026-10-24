@@ -2895,3 +2895,29 @@ body {
   border-color: var(--primary-cyan) !important;
 }
 
+/* ==========================================================================
+   Obtainium Integration Modal & QR Code
+   ========================================================================== */
+#obtainium-qr-container img,
+#obtainium-qr-container canvas {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  display: block !important;
+  margin: 0 auto;
+}
+
+.obtainium-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(32, 207, 206, 0.1);
+  color: var(--primary-cyan);
+  border: 1px solid rgba(32, 207, 206, 0.25);
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+

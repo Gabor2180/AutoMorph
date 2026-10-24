@@ -136,6 +136,17 @@ function setupEventListeners() {
     loadAllData(true);
   });
 
+  // Obtainium Modal Controls
+  document.getElementById('btn-obtainium-sync')?.addEventListener('click', () => openObtainiumModal());
+  document.getElementById('btn-hero-obtainium')?.addEventListener('click', () => openObtainiumModal());
+  document.getElementById('btn-obtainium-modal-close')?.addEventListener('click', closeObtainiumModal);
+  document.getElementById('btn-obtainium-modal-close-x')?.addEventListener('click', closeObtainiumModal);
+  document.getElementById('modal-obtainium')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-obtainium') closeObtainiumModal();
+  });
+  document.getElementById('btn-obtainium-copy-json')?.addEventListener('click', copyObtainiumJson);
+  document.getElementById('btn-obtainium-copy-repo')?.addEventListener('click', copyFdroidRepoUrl);
+
   // Docker Image Update Modal Controls
   document.getElementById('site-update-btn')?.addEventListener('click', openUpdateModal);
   document.getElementById('site-version-tag')?.addEventListener('click', openUpdateModal);
@@ -1613,6 +1624,9 @@ function renderConfiguredApps() {
                 <span class="material-symbols-rounded" style="font-size: 16px;">download</span>
               </a>
             ` : ''}
+            <button onclick="event.stopPropagation(); openObtainiumModal('${pkg}')" class="btn btn-secondary btn-sm" title="Add ${pkg} to Obtainium or download config">
+              <span class="material-symbols-rounded" style="font-size: 16px; color: var(--primary-cyan);">phone_android</span>
+            </button>
             <button onclick="navigateToPackageFiles('${pkg}')" class="btn btn-secondary btn-sm" title="Browse files for ${pkg}">
               <span class="material-symbols-rounded" style="font-size: 16px;">folder_open</span>
             </button>
@@ -5494,6 +5508,8 @@ function handleHashRouting() {
   if (hash.startsWith('#files') || hash.startsWith('#/files')) {
     const sub = hash.replace(/^#\/?files\/?/, '');
     switchTab('files', decodeURIComponent(sub));
+  } else if (hash === '#obtainium' || hash === '#/obtainium' || hash === '#sync' || hash === '#/sync') {
+    openObtainiumModal();
   } else if (!hash && state.activeTab === 'files') {
     switchTab('apps');
   }
@@ -5894,4 +5910,139 @@ function switchResultModalTab(tabName) {
 function closeResultViewerModal() {
   document.getElementById('modal-result-viewer')?.classList.remove('open');
 }
+
+// ---------------------------------------------------------------------------
+// Obtainium Integration & 1-Click Sync
+// ---------------------------------------------------------------------------
+
+let cachedObtainiumExport = null;
+
+async function openObtainiumModal(specificPackage = null) {
+  const modal = document.getElementById('modal-obtainium');
+  if (!modal) return;
+
+  modal.classList.add('open');
+
+  // Detect Android / Mobile
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+
+  const mobileBox = document.getElementById('obtainium-mobile-box');
+  const desktopBox = document.getElementById('obtainium-desktop-box');
+
+  if (isAndroid || isMobile) {
+    if (mobileBox) mobileBox.classList.remove('hidden');
+  } else {
+    if (mobileBox) mobileBox.classList.add('hidden');
+  }
+
+  // Loading state in QR container
+  const qrContainer = document.getElementById('obtainium-qr-container');
+  if (qrContainer) {
+    qrContainer.innerHTML = '<span class="material-symbols-rounded" style="font-size: 32px; color: #0d0e12; animation: spin 1s infinite linear;">sync</span>';
+  }
+
+  try {
+    const res = await fetch('/api/obtainium/export');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    cachedObtainiumExport = data;
+
+    let appsToSync = data.apps || [];
+    if (specificPackage) {
+      appsToSync = appsToSync.filter(a => a.id === specificPackage || a.name === specificPackage);
+      // Fallback if not in export yet
+      if (appsToSync.length === 0 && data.apps && data.apps.length > 0) {
+        appsToSync = data.apps;
+      }
+    }
+
+    // Update count text
+    const countEl = document.getElementById('obtainium-app-count-text');
+    if (countEl) {
+      if (specificPackage) {
+        countEl.textContent = `Syncs package: ${specificPackage}`;
+      } else {
+        const count = appsToSync.length;
+        countEl.textContent = `Syncs ${count} patched application${count === 1 ? '' : 's'}`;
+      }
+    }
+
+    // Build deep link URI:
+    // If 1 app: obtainium://app/{json}
+    // If >1 apps: obtainium://apps/[{...}]
+    let deepLinkUri = '';
+    if (appsToSync.length === 1) {
+      deepLinkUri = `obtainium://app/${encodeURIComponent(JSON.stringify(appsToSync[0]))}`;
+    } else {
+      deepLinkUri = `obtainium://apps/${encodeURIComponent(JSON.stringify(appsToSync))}`;
+    }
+
+    // Direct link button
+    const directBtn = document.getElementById('btn-obtainium-direct-link');
+    if (directBtn) {
+      directBtn.href = deepLinkUri;
+    }
+
+    // QR Code URL: Redirect through /api/obtainium/open for seamless mobile scanner launch
+    const qrUrl = window.location.origin + '/api/obtainium/open';
+
+    if (qrContainer) {
+      qrContainer.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(qrContainer, {
+          text: qrUrl,
+          width: 200,
+          height: 200,
+          colorDark: '#0d0e12',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } else {
+        qrContainer.innerHTML = `<a href="${qrUrl}" target="_blank" style="font-size: 0.8rem; color: #000; text-align: center; word-break: break-all;">Open Sync Link</a>`;
+      }
+    }
+
+  } catch (err) {
+    console.error('Failed to load Obtainium export data:', err);
+    if (qrContainer) {
+      qrContainer.innerHTML = '<span style="color: #ef4444; font-size: 0.8125rem;">No patched apps found yet</span>';
+    }
+    showToast('Failed to load Obtainium sync data: ' + err.message, 'error');
+  }
+}
+
+function closeObtainiumModal() {
+  document.getElementById('modal-obtainium')?.classList.remove('open');
+}
+
+function copyObtainiumJson() {
+  if (!cachedObtainiumExport) {
+    fetch('/api/obtainium/export')
+      .then(res => res.json())
+      .then(data => {
+        cachedObtainiumExport = data;
+        navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+          showToast('Obtainium JSON copied to clipboard!', 'success');
+        });
+      })
+      .catch(err => showToast('Failed to copy: ' + err.message, 'error'));
+    return;
+  }
+  navigator.clipboard.writeText(JSON.stringify(cachedObtainiumExport, null, 2)).then(() => {
+    showToast('Obtainium JSON copied to clipboard!', 'success');
+  }).catch(err => {
+    showToast('Failed to copy to clipboard', 'error');
+  });
+}
+
+function copyFdroidRepoUrl() {
+  const repoUrl = window.location.origin;
+  navigator.clipboard.writeText(repoUrl).then(() => {
+    showToast(`F-Droid Repo URL copied: ${repoUrl}`, 'success');
+  }).catch(() => {
+    showToast('Failed to copy URL', 'error');
+  });
+}
+
 
