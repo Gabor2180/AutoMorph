@@ -116,12 +116,14 @@ class Obtanium:
                 'name': package_name,
                 'author': 'AutoMorph',
                 'url': f"{self.base_url}?appId={package_name}",
-                'latestVersion': latest_version,
+                'latestVersion': str(latest_details['version_code']),
                 'preferredApkIndex': 0,
                 'overrideSource': 'FDroidRepo',
-                'additionalSettings': f'{{"appIdOrName":"{package_name}"}}',
+                'additionalSettings': f'{{"appIdOrName":"{package_name}","useVersionCodeAsOSVersion":true}}',
                 'apkUrls': json.dumps(apk_list)
             }
+
+
 
             ob_export['apps'].append(app)
 
