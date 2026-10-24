@@ -23,10 +23,6 @@
 ## Enhancements
 - [ ] Add support for unreleased patches
 
-- [ ] Patcher enhancements
-    - [x] Add strip libs
-    - [ ] Key backups  
-
 ## Past Fixes
 - [x] Check line 130 in main - version is 0.0.0 for package with no requirement
     - [x] Also an issue in line 138 as if the version is none, it doesn't find the already patched app (8.3.2 for infinity)
@@ -101,6 +97,10 @@
 
 - [x] Delete old logs/apps
     - [x] Option to choose how many to keep
+
+- [x] Patcher enhancements
+    - [x] Add strip libs
+    - [x] Key backups  
 
 
 

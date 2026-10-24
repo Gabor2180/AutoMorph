@@ -5,6 +5,7 @@ import requests
 import hashlib
 import subprocess
 import urllib.parse
+import time
 from pathlib import Path
 import logging
 from datetime import datetime
@@ -13,13 +14,14 @@ logger = logging.getLogger(__name__)
 
 class Morphe:
 
-    def __init__(self, project_root: Path, original_dir: Path, patched_dir: Path, architecture: str, detailed_app_list: dict[str, dict], repo_details: dict[str, dict], low_spec_mode: bool, force: bool) -> None:
+    def __init__(self, project_root: Path, original_dir: Path, patched_dir: Path, architecture: str, detailed_app_list: dict[str, dict], repo_details: dict[str, dict], low_spec_mode: bool, force: bool, base_url: str) -> None:
         self.project_root = project_root
         self.repo_details = repo_details
         self.arch = architecture
         self.low_spec_mode = low_spec_mode
         self.detailed_patch_list = detailed_app_list
         self.force = force
+        self.base_url = base_url
         
         self.options_dir = project_root / "tools" / "automorph-data" / "options"
         self.original_dir = original_dir
@@ -720,7 +722,7 @@ class Morphe:
 
         return output 
 
-    def patch(self, package_name: str, version_name: str, repos: set[str], options_to_use: Path, strat: int, attempt: int, striplibs: bool) -> tuple[bool, Path | str | None, str | None]:
+    def patch(self, package_name: str, version_name: str, repos: set[str], options_to_use: Path, strat: int, attempt: int, striplibs: bool, package: dict) -> tuple[bool, Path | str | None, str | None]:
         dest = None
 
         cmd = ["java"]
@@ -779,7 +781,7 @@ class Morphe:
 
             if output_dest.is_file():
                 logger.info(f" └── [✓] Successfully patched {package_name} v{version_name}")
-                self.write_patched_json(package_name, version_name, repos, strat, attempt, options_to_use, output_dest, result_dest)
+                self.write_patched_json(package_name, version_name, repos, strat, attempt, options_to_use, output_dest, result_dest, package)
                 return True, output_dest, None
             else:
                 logger.error(" └── [!] Java exited with code 0, but output APK was not found.")
@@ -805,10 +807,12 @@ class Morphe:
 #      Write Patched Json       #
 #################################
 
-    def write_patched_json(self, package_name: str, version_name: str, repos: set[str], strat: int, attempt: int, options_to_use: Path, output: Path, result_dset: Path) -> None:
+    def write_patched_json(self, package_name: str, version_name: str, repos: set[str], strat: int, attempt: int, options_to_use: Path, output: Path, result_dset: Path, package: dict) -> None:
         attempt += 1
         patched_json = self.state_dir / "patched.json"
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now()
+        timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+        time_ms = int(now.timestamp() * 1000)
         patched_data = {}
         applied_patches = {}
         patch_aliases = {}
@@ -867,10 +871,14 @@ class Morphe:
                 patch_aliases.setdefault(aliase, []).append(p)
 
         package_sha = self.make_sha(output)
-
         package_size = self.get_size(output)
+        vc = package[package_name][version_name]['version_code']
+        version_code = int(vc) if vc is not None else 0
         
-        patched_data.setdefault(package_name, {})[version_name] = {'applied_patches': applied_patches, 'patch_aliases': patch_aliases, 'location': str(output), **package_size, 'sha256': package_sha, 'repos': list(repos), 'strat': strat, 'attempt': attempt, 'arch': self.arch, 'time': timestamp}
+        relative_path = output.as_posix().split('/patched/', 1)[-1]
+        url = f"{self.base_url}/files/{relative_path}"
+
+        patched_data.setdefault(package_name, {})[version_name] = {'version_code': version_code, 'applied_patches': applied_patches, 'patch_aliases': patch_aliases, 'file_name': output.name, 'location': str(output), 'url': url, **package_size, 'sha256': package_sha, 'repos': list(repos), 'strat': strat, 'attempt': attempt, 'arch': self.arch, 'time': timestamp, 'time_ms': time_ms}
 
         with open(patched_json, "w", encoding="utf-8") as f:
             json.dump(patched_data, f, indent=2)
