@@ -5,10 +5,11 @@ import requests
 import hashlib
 import subprocess
 import urllib.parse
-import time
 from pathlib import Path
 import logging
 from datetime import datetime
+from pyaxmlparser.axmlprinter import AXMLPrinter
+from zipfile import ZipFile
 
 logger = logging.getLogger(__name__)
 
@@ -874,11 +875,21 @@ class Morphe:
         package_size = self.get_size(output)
         vc = package[package_name][version_name]['version_code']
         version_code = int(vc) if vc is not None else 0
-        
+
+        try:
+            with ZipFile(output, 'r') as z:
+                root = AXMLPrinter(z.read("AndroidManifest.xml")).get_xml_obj()
+                patched_package_name = root.attrib.get("package", package_name)
+                patched_version_code = root.attrib.get("{http://schemas.android.com/apk/res/android}versionCode", version_code)
+        except Exception as e:
+            logger.critical(f"\n [!] Failed to read package name from {output.name} - may not function with Obtanium: {e}")
+            patched_package_name = package_name
+            patched_version_code = version_code
+
         relative_path = output.as_posix().split('/patched/', 1)[-1]
         url = f"{self.base_url}/files/{relative_path}"
 
-        patched_data.setdefault(package_name, {})[version_name] = {'version_code': version_code, 'applied_patches': applied_patches, 'patch_aliases': patch_aliases, 'file_name': output.name, 'location': str(output), 'url': url, **package_size, 'sha256': package_sha, 'repos': list(repos), 'strat': strat, 'attempt': attempt, 'arch': self.arch, 'time': timestamp, 'time_ms': time_ms}
+        patched_data.setdefault(package_name, {})[version_name] = {'patched_package_name': patched_package_name, 'patched_version_code': int(patched_version_code), 'version_code': int(version_code), 'applied_patches': applied_patches, 'patch_aliases': patch_aliases, 'file_name': output.name, 'location': str(output), 'url': url, **package_size, 'sha256': package_sha, 'repos': list(repos), 'strat': strat, 'attempt': attempt, 'arch': self.arch, 'time': timestamp, 'time_ms': time_ms}
 
         with open(patched_json, "w", encoding="utf-8") as f:
             json.dump(patched_data, f, indent=2)

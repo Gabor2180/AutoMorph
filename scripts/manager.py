@@ -109,14 +109,15 @@ class Obtanium:
             sorted_versions = sorted(details.keys(), key=lambda v: details[v].get('version_code', 0), reverse=True)
             latest_version = sorted_versions[0]
             latest_details = details[latest_version]
-            additional_settings = {'appIdOrName': package_name, 'versionExtractionRegEx': r'\d+(\.\d+)+', 'pickHighestVersionCode': True}
+            patched_package_name = latest_details.get('patched_package_name', package_name)
+            additional_settings = {'appIdOrName': patched_package_name, 'versionExtractionRegEx': r'\d+(\.\d+)+', 'pickHighestVersionCode': True}
             apk_list = [[latest_details['file_name'], latest_details['url']]]
 
             app = {
-                'id': package_name,
+                'id': patched_package_name,
                 'name': package_name,
                 'author': 'AutoMorph',
-                'url': f"{self.base_url}?appId={package_name}",
+                'url': f"{self.base_url}?appId={patched_package_name}",
                 'latestVersion': latest_version,
                 'preferredApkIndex': 0,
                 'overrideSource': 'FDroidRepo',
@@ -146,50 +147,55 @@ class FDroid:
         }
         
         for package_name, details in self.patched_results.items():
-            index['packages'][package_name] = {
-                'metadata': {
-                    'name': {
-                        'en-US': package_name
-                    },
-                    'summary': {
-                        'en-US': 'Patched with AutoMorph'
-                    },
-                    'authorName': {
-                        'en-US': 'AutoMorph'
-                    },
-                    'changelog': {
-                        'en-US': 'Patches automatically applied'
-                    }
-                },
-                'versions': {}
-            }        
-
+            if not details:
+                continue
+            
             for version, v_details in details.items():
+                patched_package_name = v_details.get('patched_package_name', package_name)
                 version_name = f"v{version.replace('.', '_')}"
                 file_name = urlparse(v_details['url']).path.lstrip("/")
-                version_code = v_details['version_code']
+                version_code = v_details.get('patched_version_code', v_details.get('version_code', 0))
                 arch = v_details['arch']
                 time = v_details['time_ms']
-
-                index['packages'][package_name]['versions'][version_name] = {
-                        'added': time,
-                        'file': {
-                            'name': file_name
+                
+                if patched_package_name not in index['packages']:
+                    index['packages'][patched_package_name] = {
+                        'metadata': {
+                            'name': {
+                                'en-US': package_name
+                            },
+                            'summary': {
+                                'en-US': 'Patched with AutoMorph'
+                            },
+                            'authorName': {
+                                'en-US': 'AutoMorph'
+                            },
+                            'changelog': {
+                                'en-US': 'Patches automatically applied'
+                            }
                         },
-                        'manifest': {
-                            'versionName': version,
-                            'versionCode': int(version_code),
-                            'nativecode': [
-                                arch
-                            ]
-                        },
-                        'releaseChannels': [
-                            'stable'
-                        ],
-                        'whatsNew': {
-                            'en-US': 'new patches'
-                        }
+                        'versions': {}
                     }
+
+                index['packages'][patched_package_name]['versions'][version_name] = {
+                    'added': time,
+                    'file': {
+                        'name': file_name
+                    },
+                    'manifest': {
+                        'versionName': version,
+                        'versionCode': version_code,
+                        'nativecode': [
+                            arch
+                        ]
+                    },
+                    'releaseChannels': [
+                        'stable'
+                    ],
+                    'whatsNew': {
+                        'en-US': 'new patches'
+                    }
+                }        
 
         return index
 

@@ -380,7 +380,7 @@ class Downloader:
                     return True, "is_apk"
                 return False, "is_xapk"
             
-        except BadZipFile:  #[cite: 1]
+        except BadZipFile:
             return False, "bad_zip"
 
     def check_xapk_arch(self, xapk: Path, arch: str) -> tuple[bool, str | None]:
