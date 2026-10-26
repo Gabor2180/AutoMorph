@@ -151,11 +151,11 @@ def parse_yaml(conf: dict) -> tuple:
 
         patch_aliases = package.get('patch_aliases') or []
 
-        for aliase in patch_aliases:
-            if not aliase:
+        for alias in patch_aliases:
+            if not alias:
                 continue
-            aliase_name = aliase.get('name')
-            aliases = aliase.get('aliases') or []
+            aliase_name = alias.get('name')
+            aliases = alias.get('aliases') or []
             for al in aliases:
                 if al:
                     aliase_map[al] = aliase_name

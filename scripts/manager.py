@@ -106,16 +106,16 @@ class Obtanium:
             if not details:
                 continue
 
-            sorted_versions = sorted(details.keys(), key=lambda v: details[v].get('version_code', 0), reverse=True)
+            sorted_versions = sorted(details.keys(), key=lambda v: details[v]['package'].get('patched_version_code', details[v]['package'].get('source_version_code', 0)), reverse=True)
             latest_version = sorted_versions[0]
             latest_details = details[latest_version]
-            patched_package_name = latest_details.get('patched_package_name', package_name)
+            patched_package_name = latest_details['package'].get('patched_package_name', package_name)
             additional_settings = {'appIdOrName': patched_package_name, 'versionExtractionRegEx': r'\d+(\.\d+)+', 'pickHighestVersionCode': True}
-            apk_list = [[latest_details['file_name'], latest_details['url']]]
+            apk_list = [[latest_details['file']['file_name'], latest_details['file']['url']]]
 
             app = {
                 'id': patched_package_name,
-                'name': package_name,
+                'name': latest_details['package'].get('clean_name', package_name),
                 'author': 'AutoMorph',
                 'url': f"{self.base_url}?appId={patched_package_name}",
                 'latestVersion': latest_version,
@@ -130,16 +130,21 @@ class Obtanium:
         return ob_export
 
 class FDroid:
-    def __init__(self, base_url: str, patched_results: dict):
+    def __init__(self, base_url: str, patched_results: dict, indexv2: dict):
         self.time = int(time.time() * 1000)
         self.patched_results = patched_results
         self.base_url = base_url
+        self.existing_index = indexv2 or {}
 
     def add_package(self):
         index = {
             'repo': {
-                'name': 'AutoMorph',
-                'description': "Custom Patched Android Applications Using AutoMorph and Morphe Desktop",
+                'name': {
+                    'en-US': "AutoMorph"
+                },
+                'description': {
+                    'en-US': "Custom Patched Android Applications Using AutoMorph and Morphe Desktop"
+                    },
                 'address': self.base_url,
                 'timestamp': self.time
             },
@@ -151,43 +156,44 @@ class FDroid:
                 continue
             
             for version, v_details in details.items():
-                patched_package_name = v_details.get('patched_package_name', package_name)
-                version_name = f"v{version.replace('.', '_')}"
-                file_name = urlparse(v_details['url']).path.lstrip("/")
-                version_code = v_details.get('patched_version_code', v_details.get('version_code', 0))
-                arch = v_details['arch']
-                time = v_details['time_ms']
-                
+                patched_package_name = v_details['package'].get('patched_package_name', package_name)
+                time = v_details['metadata'].get('time_ms')
+          
                 if patched_package_name not in index['packages']:
+                    added = self.existing_index.get('packages', {}).get(patched_package_name, {}).get('metadata', {}).get('added')
                     index['packages'][patched_package_name] = {
                         'metadata': {
+                            'added': added or time,
+                            'lastUpdated': time,
                             'name': {
-                                'en-US': package_name
+                                'en-US': v_details['package'].get('clean_name', package_name)
                             },
                             'summary': {
                                 'en-US': 'Patched with AutoMorph'
                             },
-                            'authorName': {
-                                'en-US': 'AutoMorph'
-                            },
-                            'changelog': {
-                                'en-US': 'Patches automatically applied'
-                            }
+                            'authorName': 'AutoMorph',
+                            'changelog': 'Patches automatically applied'  
                         },
                         'versions': {}
                     }
 
-                index['packages'][patched_package_name]['versions'][version_name] = {
+                index['packages'][patched_package_name]['versions'][f"v{version.replace('.', '_')}"] = {
                     'added': time,
                     'file': {
-                        'name': file_name
+                        'name': urlparse(v_details['file']['url']).path.lstrip("/"),
+                        'sha256': v_details['file'].get('sha256'),
+                        'size': v_details['file'].get('size_bytes')
                     },
                     'manifest': {
                         'versionName': version,
-                        'versionCode': version_code,
-                        'nativecode': [
-                            arch
-                        ]
+                        'versionCode': v_details['package'].get('patched_version_code', v_details['package'].get('source_version_code', 0)),
+                        'nativeCode': [
+                            v_details['package'].get('arch')
+                        ],
+                        "usesSdk": {
+                            "minSdkVersion": v_details['package'].get('min_sdk'),
+                            "targetSdkVersion": v_details['package'].get('target_sdk')
+                        },
                     },
                     'releaseChannels': [
                         'stable'
@@ -218,13 +224,15 @@ def clear_logs(log_dir: Path, max_logs: int):
 
 def build_all_jsons(state_dir: Path, patched_json: Path, base_url: str) -> None:
     to_write = {}
+    indexv2 = state_dir / "index-v2.json"
 
     patched_results = read_json(patched_json)
+    existing_index = read_json(indexv2)
 
     if patched_results: 
-        fdroid = FDroid(base_url, patched_results)
+        fdroid = FDroid(base_url, patched_results, existing_index)
         indexv2_data = fdroid.add_package()
-        to_write['index-v2_data'] = {'data': indexv2_data, 'file': state_dir / "index-v2.json"}
+        to_write['index-v2_data'] = {'data': indexv2_data, 'file': indexv2}
 
         obtanium = Obtanium(base_url, patched_results)
         ob_export = obtanium.add_package()

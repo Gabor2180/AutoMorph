@@ -419,13 +419,13 @@ class Morphe:
                         patches_dict = {}
 
                     for patch, values in patches_dict.items():
-                        aliase = patch
+                        alias = patch
                         alias_map = self.detailed_patch_list[app].get('patch_aliases', {})
                         if patch in alias_map:
-                            aliase = alias_map[patch]
+                            alias = alias_map[patch]
 
                         if isinstance(values, dict) and values.get('enabled'):
-                            enabled_patches_per_app.setdefault(app, {}).setdefault(aliase, {})[repo] = patch
+                            enabled_patches_per_app.setdefault(app, {}).setdefault(alias, {})[repo] = patch
                             all_enabled_repos.add(repo)
 
         return enabled_patches_per_app, all_enabled_repos
@@ -521,9 +521,9 @@ class Morphe:
 
         entries = [data] if isinstance(data, dict) else (data if isinstance(data, list) else [])
 
-        for aliase, details in enabled_patches_per_app_versions.items():
+        for alias, details in enabled_patches_per_app_versions.items():
             if len(details) > 1:
-                logger.info(f" └── [!] Aliase found {aliase}")
+                logger.info(f" └── [!] Alias found {alias}")
                 for repo, patch_info in details.items():
                     shas = self.get_sha(repo, package_name)
                     patch_name = patch_info[0]
@@ -700,7 +700,7 @@ class Morphe:
 
     def check_repo_reqs(self, aliase_details: dict[str, dict[str, tuple[str, tuple[int, ...], str]]], target_version: str) -> set[str]:
         repos = set()
-        for aliase, repo_details in aliase_details.items():
+        for alias, repo_details in aliase_details.items():
             for repo, (patch_name, version_tuple, version_string) in repo_details.items():
                 if version_string == target_version:
                     repos.add(repo)
@@ -711,7 +711,7 @@ class Morphe:
                     if chosen_repo:
                         repos.add(chosen_repo)
                     else:
-                        logger.error(f" └── [!] No repo found for aliase: {aliase}")
+                        logger.error(f" └── [!] No repo found for alias: {alias}")
         return repos
 
     def check_repo_per_version(self, aliase_details: dict[str, dict[str, tuple[str, tuple[int, ...], str]]]) -> dict[tuple[int, ...], set[str]]:
@@ -745,7 +745,6 @@ class Morphe:
         for repo in repos:
             owner = self.repo_details[repo]['owner']
             repo_name = self.repo_details[repo]['repo_name']
-
             mpp_path = self.get_cached_repo_path(owner, repo_name, repo)
 
             if not mpp_path:
@@ -817,70 +816,85 @@ class Morphe:
         patched_data = {}
         applied_patches = {}
         patch_aliases = {}
+        target_shas = {}
 
-        try:
-            with open(result_dset, "r", encoding="utf-8") as r:
-                results = json.load(r)
-        except json.JSONDecodeError:
-            logger.warning(f"Unable to open results file for {package_name} v{version_name}")
-            pass
+        bundles = self.read_json(options_to_use)
+        results = self.read_json(result_dset)
 
         if results:
             applied_patches_res = results.get('appliedPatches')
             
             if applied_patches_res:  
-                bundles = []
-
-                if len(repos) > 1:
-                    with open(options_to_use, "r", encoding="utf-8") as f:
-                        try:
-                            bundles = json.load(f)
-                        except json.JSONDecodeError:
-                            logger.warning(f"Unable to open options file for {package_name}: {options_to_use}")
-
-                    target_shas = {}
-
+                if bundles:
                     for r in repos:
-                        cached_repo = self.repo_details[r]['cached_repo']['cached_mpp_path']
+                        cached_mpp_path = self.repo_details[r]['cached_repo']['cached_mpp_path']
                         sha = self.repo_details[r].get("sha")
                         if not sha:
-                            sha = self.make_sha(cached_repo)
+                            sha = self.make_sha(cached_mpp_path)
                             self.repo_details[r]["sha"] = sha
                         target_shas[sha] = r
 
                 for patch_name in applied_patches_res:
+                    repo = None
+                    alias = "Unable to detemine alias"
+                    patch_options = "Unable to determine patch options"
 
-                    if len(repos) > 1:
-                        if bundles:
-                            repo = self.find_repo(patch_name, bundles, target_shas)
-                        else:
-                            repo = "Unable to find repo"
-                    else:
-                        repo = next(iter(repos))
+                    if bundles:
+                        repo, patch_options = self.find_repo(patch_name, bundles, target_shas)
 
-                    applied_patches[patch_name] = repo
+                    aliases = self.enabled_patches_per_app.get(package_name)
+                    if repo and aliases:
+                        for al, rs in aliases.items():
+                            if rs.get(repo) == patch_name:
+                                alias = al
 
+                    applied_patches[patch_name] = {
+                        'repo': repo,
+                        'options': patch_options,
+                        'alias': alias
+                    }
+
+        else:
+            logger.warning(f"Unable to open results file for {package_name} v{version_name}")
+        
         if patched_json.is_file():
-                try:
-                    with open(patched_json, "r", encoding="utf-8") as p:
-                        patched_data = json.load(p)
-                except json.JSONDecodeError:
-                    pass
+            patched_data = self.read_json(patched_json) or {}
 
-        for p, aliase in self.detailed_patch_list[package_name].get("patch_aliases", {}).items():
-            if aliase:
-                patch_aliases.setdefault(aliase, []).append(p)
+        for p, alias in self.detailed_patch_list[package_name].get("patch_aliases", {}).items():
+            if alias:
+                patch_aliases.setdefault(alias, []).append(p)
 
         package_sha = self.make_sha(output)
         package_size = self.get_size(output)
         vc = package[package_name][version_name]['version_code']
         version_code = int(vc) if vc is not None else 0
-
+        min_sdk = None
+        target_sdk = None
+        clean_name = package_name
+        patched_package_name = package_name
+        patched_version_code = version_code
+        patched_version_name = version_name
+        
         try:
             with ZipFile(output, 'r') as z:
                 root = AXMLPrinter(z.read("AndroidManifest.xml")).get_xml_obj()
                 patched_package_name = root.attrib.get("package", package_name)
                 patched_version_code = root.attrib.get("{http://schemas.android.com/apk/res/android}versionCode", version_code)
+                patched_version_name = root.attrib.get("{http://schemas.android.com/apk/res/android}versionName", version_name)
+
+                uses_sdk = root.find("uses-sdk")
+                if uses_sdk is not None:
+                    raw_min = str(uses_sdk.attrib.get("{http://schemas.android.com/apk/res/android}minSdkVersion"))
+                    raw_target = str(uses_sdk.attrib.get("{http://schemas.android.com/apk/res/android}targetSdkVersion"))
+                    min_sdk = int(raw_min) if raw_min and raw_min.isdigit() else None
+                    target_sdk = int(raw_target) if raw_target and raw_target.isdigit() else None
+                    
+                app_elem = root.find("application")
+                if app_elem is not None:
+                    label = app_elem.attrib.get("{http://schemas.android.com/apk/res/android}label")
+                    if label and not label.startswith("@"):
+                        clean_name = label
+            
         except Exception as e:
             logger.critical(f"\n [!] Failed to read package name from {output.name} - may not function with Obtanium: {e}")
             patched_package_name = package_name
@@ -889,8 +903,42 @@ class Morphe:
         relative_path = output.as_posix().split('/patched/', 1)[-1]
         url = f"{self.base_url}/files/{relative_path}"
 
-        patched_data.setdefault(package_name, {})[version_name] = {'patched_package_name': patched_package_name, 'patched_version_code': int(patched_version_code), 'version_code': int(version_code), 'applied_patches': applied_patches, 'patch_aliases': patch_aliases, 'file_name': output.name, 'location': str(output), 'url': url, **package_size, 'sha256': package_sha, 'repos': list(repos), 'strat': strat, 'attempt': attempt, 'arch': self.arch, 'time': timestamp, 'time_ms': time_ms}
+        morphe = re.search(r"(\d+\.\d+\.\d+)", self.morphe_location.resolve().name) 
+        morphe_version = morphe.group(1) if morphe else "Unknown"
 
+        patched_data.setdefault(package_name, {})[version_name] = {
+            'metadata': {
+                'time': timestamp,
+                'time_ms': time_ms
+            },
+            'package': {
+                'clean_name': clean_name,
+                'source_package_name': package_name,
+                'patched_package_name': patched_package_name,
+                'patched_version_name': str(patched_version_name),
+                'patched_version_code': int(patched_version_code),
+                'source_version_code': int(version_code),
+                'arch': self.arch,
+                'min_sdk': min_sdk,
+                'target_sdk': target_sdk
+            },
+            'file': {
+                'file_name': output.name,
+                'location': str(output),
+                'url': url,
+                **package_size,
+                'sha256': package_sha
+            },
+            'patch': {
+                'applied_patches': applied_patches,
+                'patch_aliases': patch_aliases,
+                'repos': list(repos),
+                'strat': strat,
+                'attempt': attempt,
+                'morphe_desktop_version': morphe_version
+            }
+        }
+            
         with open(patched_json, "w", encoding="utf-8") as f:
             json.dump(patched_data, f, indent=2)
 
@@ -899,10 +947,11 @@ class Morphe:
             patch_data = bundle.get("patches", {}).get(patch)
             if patch_data and patch_data.get("enabled"):
                 found_sha = bundle.get("meta", {}).get("sha256")
+                options = patch_data.get("options")
                 if found_sha in target_shas:
-                    return target_shas[found_sha]
+                    return target_shas[found_sha], options
             
-        return "Unable to find repo"
+        return "Unable to find repo", None
 
     def make_sha(self, item: Path) -> str:
         sha = hashlib.sha256()
@@ -922,3 +971,15 @@ class Morphe:
                 size['file_size'] = f"{size_in_bytes:.2f} {unit}"
                 return size
             size_in_bytes /= 1024
+
+    def read_json(self, file: Path) -> dict | None:
+        try:
+            with open(file, "r", encoding="utf-8") as r:
+                results = json.load(r)
+                return results
+        except FileNotFoundError:
+            logger.warning(f"File not found: {file}")
+            return
+        except json.JSONDecodeError:
+            logger.warning(f"Unable to parse invalid JSON in {file}")
+            return
