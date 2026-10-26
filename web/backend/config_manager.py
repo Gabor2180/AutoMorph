@@ -305,7 +305,8 @@ def get_last_patch_result(package: str, patched_registry: dict[str, Any] | None 
         for ver_name, ver_info in pkg_entry.items():
             if not isinstance(ver_info, dict):
                 continue
-            loc_str = str(ver_info.get("location") or "")
+            file_meta = ver_info.get("file", {}) if isinstance(ver_info.get("file"), dict) else {}
+            loc_str = str(file_meta.get("location") or ver_info.get("location") or "")
             loc = Path(loc_str) if loc_str else None
             if not loc or not loc.is_file():
                 # Fallback to standard app location if path moved
@@ -313,7 +314,8 @@ def get_last_patch_result(package: str, patched_registry: dict[str, Any] | None 
                 if candidate.is_file():
                     loc = candidate
             if loc and loc.is_file():
-                t_str = ver_info.get("time", "")
+                meta_dict = ver_info.get("metadata", {}) if isinstance(ver_info.get("metadata"), dict) else {}
+                t_str = meta_dict.get("time") or ver_info.get("time", "")
                 t_val = 0.0
                 if t_str:
                     try:
@@ -331,10 +333,12 @@ def get_last_patch_result(package: str, patched_registry: dict[str, Any] | None 
 
         # If there is no more recent failure, return the fast-path result directly!
         if not has_newer_failure:
-            applied_dict = best_info.get("applied_patches") or {}
+            patch_data = best_info.get("patch", {}) if isinstance(best_info.get("patch"), dict) else {}
+            applied_dict = patch_data.get("applied_patches") or best_info.get("applied_patches") or {}
             patch_owners = {}
             norm_applied = []
-            for p_name, r_url in applied_dict.items():
+            for p_name, r_val in applied_dict.items():
+                r_url = r_val.get("repo") if isinstance(r_val, dict) else r_val
                 owner = _extract_repo_owner(r_url)
                 patch_owners[p_name] = owner
                 norm_applied.append({
@@ -343,12 +347,12 @@ def get_last_patch_result(package: str, patched_registry: dict[str, Any] | None 
                     "options": None,
                 })
 
-            strat = best_info.get("strat", 1)
+            strat = patch_data.get("strat") or best_info.get("strat", 1)
             strat_num = int(strat) if str(strat).isdigit() else 1
             strat_name = "Strategy 1 (All Repos)" if strat_num == 1 else "Strategy 2 (Version-Compatible)"
-            attempt_num = best_info.get("attempt", 1)
+            attempt_num = patch_data.get("attempt") or best_info.get("attempt", 1)
             attempt_val = int(attempt_num) if str(attempt_num).isdigit() else 1
-            repos = [str(r).strip() for r in (best_info.get("repos") or []) if str(r).strip()]
+            repos = [str(r).strip() for r in (patch_data.get("repos") or best_info.get("repos") or []) if str(r).strip()]
 
             detailed_attempts = []
             if report_attempts:
@@ -409,7 +413,7 @@ def get_last_patch_result(package: str, patched_registry: dict[str, Any] | None 
                 "failed_patches": [],
                 "applied_count": len(norm_applied),
                 "failed_count": 0,
-                "sha256": best_info.get("sha256"),
+                "sha256": (best_info.get("file", {}).get("sha256") if isinstance(best_info.get("file"), dict) else None) or best_info.get("sha256"),
                 "timestamp": int(effective_time),
                 "timestamp_formatted": dt.strftime("%b %d, %H:%M"),
             }

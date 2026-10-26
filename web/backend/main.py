@@ -231,7 +231,8 @@ def get_storage_stats() -> dict[str, Any]:
             if isinstance(versions, dict):
                 for ver, info in versions.items():
                     if isinstance(info, dict):
-                        loc_str = str(info.get("location") or "")
+                        file_info = info.get("file", {}) if isinstance(info.get("file"), dict) else {}
+                        loc_str = str(file_info.get("location") or info.get("location") or "")
                         loc = Path(loc_str) if loc_str else None
                         if not loc or not loc.is_file():
                             candidate = patched_dir / pkg / ver / f"{pkg}_{ver}_patched.apk"
